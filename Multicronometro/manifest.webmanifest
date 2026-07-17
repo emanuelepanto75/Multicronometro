@@ -1,0 +1,21 @@
+{
+  "name": "Simega #304",
+  "short_name": "Simega",
+  "description": "Cronometro manuale per piloti e piste motocross.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#151515",
+  "theme_color": "#151515",
+  "orientation": "portrait",
+  "lang": "it",
+  "categories": ["sports", "utilities"],
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
