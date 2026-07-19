@@ -1,4 +1,4 @@
-const CACHE_NAME = "simega-304-v4";
+const CACHE_NAME = "simega-304-v5";
 const CORE_FILES = [
   "./",
   "./index.html",
@@ -45,12 +45,12 @@ self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
 
   event.respondWith(
-    caches.match(event.request).then((cached) => (
-      cached || fetch(event.request).then((response) => {
-        const copy = response.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
-        return response;
-      }).catch(() => caches.match("./index.html"))
+    fetch(event.request).then((response) => {
+      const copy = response.clone();
+      caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+      return response;
+    }).catch(() => (
+      caches.match(event.request).then((cached) => cached || caches.match("./index.html"))
     )),
   );
 });
