@@ -8,17 +8,17 @@ const CORE_FILES = [
   "./icon.svg",
 ];
 const SPONSOR_FILES = [
-  "./sponsors/sponsor-1.png",
-  "./sponsors/sponsor-2.png",
-  "./sponsors/sponsor-3.png",
-  "./sponsors/sponsor-4.png",
-  "./sponsors/sponsor-5.png",
-  "./sponsors/sponsor-6.png",
-  "./sponsors/sponsor-7.png",
-  "./sponsors/sponsor-8.png",
-  "./sponsors/sponsor-9.png",
-  "./sponsors/sponsor-10.png",
-  "./sponsors/sponsor-11.png",
+  "./Sponsors/sponsor-1.png",
+  "./Sponsors/sponsor-2.png",
+  "./Sponsors/sponsor-3.png",
+  "./Sponsors/sponsor-4.png",
+  "./Sponsors/sponsor-5.png",
+  "./Sponsors/sponsor-6.png",
+  "./Sponsors/sponsor-7.png",
+  "./Sponsors/sponsor-8.png",
+  "./Sponsors/sponsor-9.png",
+  "./Sponsors/sponsor-10.png",
+  "./Sponsors/sponsor-11.png",
 ];
 
 self.addEventListener("install", (event) => {
