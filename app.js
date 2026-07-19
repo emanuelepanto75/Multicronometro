@@ -63,6 +63,11 @@ const riderDialogTitle = document.querySelector("#riderDialogTitle");
 const riderDialogStats = document.querySelector("#riderDialogStats");
 const riderDialogLaps = document.querySelector("#riderDialogLaps");
 
+const compareBtn = document.querySelector("#compareBtn");
+const compareDialog = document.querySelector("#compareDialog");
+const closeCompareBtn = document.querySelector("#closeCompareBtn");
+const compareTable = document.querySelector("#compareTable");
+
 document.querySelector("#resetSessionBtn").addEventListener("click", resetActiveSession);
 document.querySelector("#exportBtn").addEventListener("click", exportHistory);
 registerServiceWorker();
@@ -99,6 +104,9 @@ riderFormCancel.addEventListener("click", resetRiderForm);
 addRiderBtn.addEventListener("click", openPickRiderDialog);
 closePickRiderBtn.addEventListener("click", () => pickRiderDialog.close());
 pickRiderSearch.addEventListener("input", () => renderPickRiderList(pickRiderSearch.value));
+
+compareBtn.addEventListener("click", openCompareDialog);
+closeCompareBtn.addEventListener("click", () => compareDialog.close());
 
 function loadState() {
   const saved = localStorage.getItem(STORAGE_KEY);
@@ -471,6 +479,46 @@ function openRiderDetail(rider) {
   riderDialog.showModal();
 }
 
+function openCompareDialog() {
+  renderCompareTable();
+  compareDialog.showModal();
+}
+
+function renderCompareTable() {
+  if (!state.riders.length) {
+    compareTable.innerHTML = '<tr><td class="empty">Aggiungi almeno un pilota per confrontare i giri.</td></tr>';
+    return;
+  }
+
+  const maxLaps = Math.max(0, ...state.riders.map((rider) => rider.laps.length));
+  const headerCells = state.riders.map((rider) => `<th>${escapeHtml(rider.name)}</th>`).join("");
+
+  let lapRows = "";
+  for (let lap = 0; lap < maxLaps; lap++) {
+    const cells = state.riders.map((rider) => `<td>${formatOptionalTime(rider.laps[lap])}</td>`).join("");
+    lapRows += `<tr><th>${lap + 1}</th>${cells}</tr>`;
+  }
+
+  const summaryRow = (label, values) => `
+    <tr class="compare-summary">
+      <th>${label}</th>
+      ${values.map((value) => `<td>${formatOptionalTime(value)}</td>`).join("")}
+    </tr>
+  `;
+
+  compareTable.innerHTML = `
+    <thead>
+      <tr><th>Giro</th>${headerCells}</tr>
+    </thead>
+    <tbody>
+      ${lapRows}
+      ${summaryRow("Best", state.riders.map((rider) => bestLapFor(rider)))}
+      ${summaryRow("Ultimo", state.riders.map((rider) => lastLapFor(rider)))}
+      ${summaryRow("Totale", state.riders.map((rider) => currentElapsed(rider)))}
+    </tbody>
+  `;
+}
+
 /* --- Anagrafica: piste --- */
 
 function upsertTrack(id, name, length) {
@@ -761,23 +809,7 @@ function renderSponsors() {
 function exportHistory() {
   if (!state.history.length) return;
 
-  const lines = [
-    "Simega #304 - Tempi motocross",
-    `Esportato: ${new Date().toLocaleString("it-IT")}`,
-    "",
-  ];
-
-  state.history.forEach((item, index) => {
-    lines.push(`${index + 1}. ${item.rider} - ${item.track}`);
-    lines.push(`Data: ${new Date(item.date).toLocaleString("it-IT")}`);
-    lines.push(`Totale: ${formatTime(item.total)} | Giri: ${item.laps} | Miglior giro: ${formatOptionalTime(item.bestLap || bestLapFromHistory(item))} | Ultimo giro: ${formatOptionalTime(item.lastLap)}`);
-    if (Array.isArray(item.lapTimes) && item.lapTimes.length) {
-      lines.push(`Giri: ${item.lapTimes.map((lap, lapIndex) => `${lapIndex + 1}) ${formatTime(lap)}`).join("   ")}`);
-    }
-    lines.push("");
-  });
-
-  const blob = new Blob([createPdf(lines)], { type: "application/pdf" });
+  const blob = new Blob([createPdf(buildExportBlocks())], { type: "application/pdf" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
@@ -790,10 +822,63 @@ function exportHistory() {
   }, 1000);
 }
 
-function createPdf(lines) {
+const PDF_LEFT = 42;
+const PDF_LABEL_WIDTH = 60;
+const PDF_USABLE_WIDTH = 513;
+
+function buildExportBlocks() {
+  const sessions = groupHistoryIntoSessions();
+  const blocks = [
+    { type: "line", text: "Simega #304 - Tempi motocross" },
+    { type: "line", text: `Esportato: ${new Date().toLocaleString("it-IT")}` },
+    { type: "line", text: "" },
+  ];
+
+  sessions.forEach((session, sessionIndex) => {
+    if (sessionIndex > 0) blocks.push({ type: "line", text: "" });
+    blocks.push({ type: "line", text: `${session.track} - ${new Date(session.date).toLocaleDateString("it-IT")}` });
+
+    const columns = session.entries;
+    const colWidth = Math.max(55, Math.floor((PDF_USABLE_WIDTH - PDF_LABEL_WIDTH) / Math.max(columns.length, 1)));
+    const colX = (index) => PDF_LEFT + PDF_LABEL_WIDTH + index * colWidth;
+
+    const nameCounts = {};
+    const headerCells = [{ x: PDF_LEFT, text: "Giro" }];
+    columns.forEach((entry, index) => {
+      nameCounts[entry.rider] = (nameCounts[entry.rider] || 0) + 1;
+      const label = nameCounts[entry.rider] > 1 ? `${entry.rider} (${nameCounts[entry.rider]})` : entry.rider;
+      headerCells.push({ x: colX(index), text: truncateForWidth(label, colWidth - 4) });
+    });
+    blocks.push({ type: "row", cells: headerCells });
+
+    const maxLaps = Math.max(0, ...columns.map((entry) => (Array.isArray(entry.lapTimes) ? entry.lapTimes.length : 0)));
+    for (let lap = 0; lap < maxLaps; lap++) {
+      const cells = [{ x: PDF_LEFT, text: `${lap + 1}` }];
+      columns.forEach((entry, index) => {
+        const time = Array.isArray(entry.lapTimes) ? entry.lapTimes[lap] : null;
+        cells.push({ x: colX(index), text: formatOptionalTime(time) });
+      });
+      blocks.push({ type: "row", cells });
+    }
+
+    const summaryRow = (label, valueFn) => {
+      const cells = [{ x: PDF_LEFT, text: label }];
+      columns.forEach((entry, index) => {
+        cells.push({ x: colX(index), text: formatOptionalTime(valueFn(entry)) });
+      });
+      blocks.push({ type: "row", cells });
+    };
+    summaryRow("Best", (entry) => entry.bestLap || bestLapFromHistory(entry));
+    summaryRow("Ultimo", (entry) => entry.lastLap);
+    summaryRow("Totale", (entry) => entry.total);
+  });
+
+  return blocks;
+}
+
+function createPdf(blocks) {
   const pageWidth = 595;
   const pageHeight = 842;
-  const left = 42;
   const top = 800;
   const lineHeight = 16;
   const bottom = 46;
@@ -801,17 +886,22 @@ function createPdf(lines) {
   let current = [];
   let y = top;
 
-  lines.forEach((line) => {
-    const wrapped = wrapPdfLine(line, 88);
-    wrapped.forEach((part) => {
-      if (y < bottom) {
-        pages.push(current);
-        current = [];
-        y = top;
-      }
-      current.push({ text: part, x: left, y });
-      y -= lineHeight;
-    });
+  function pushLine(entries) {
+    if (y < bottom) {
+      pages.push(current);
+      current = [];
+      y = top;
+    }
+    entries.forEach(({ x, text }) => current.push({ text, x, y }));
+    y -= lineHeight;
+  }
+
+  blocks.forEach((block) => {
+    if (block.type === "row") {
+      pushLine(block.cells);
+      return;
+    }
+    wrapPdfLine(block.text, 88).forEach((part) => pushLine([{ x: PDF_LEFT, text: part }]));
   });
 
   if (current.length) pages.push(current);
@@ -866,6 +956,13 @@ function wrapPdfLine(line, maxLength) {
   });
   if (current) chunks.push(current);
   return chunks;
+}
+
+function truncateForWidth(text, widthPt) {
+  const normalized = normalizePdfText(text);
+  const maxChars = Math.max(3, Math.floor(widthPt / 5.9));
+  if (normalized.length <= maxChars) return normalized;
+  return `${normalized.slice(0, maxChars - 1)}.`;
 }
 
 function normalizePdfText(value) {

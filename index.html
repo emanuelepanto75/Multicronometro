@@ -42,7 +42,10 @@
         <section class="rider-panel" aria-label="Piloti">
           <div class="section-title">
             <h2>Piloti</h2>
-            <button class="primary" id="addRiderBtn" type="button">Aggiungi</button>
+            <div class="section-title-actions">
+              <button class="secondary" id="compareBtn" type="button">Confronto</button>
+              <button class="primary" id="addRiderBtn" type="button">Aggiungi</button>
+            </div>
           </div>
           <div class="rider-list" id="riderList"></div>
         </section>
@@ -136,6 +139,18 @@
           <input id="pickRiderSearch" type="text" placeholder="Nome, cognome o numero" autocomplete="off" />
         </label>
         <div class="manage-list" id="pickRiderList"></div>
+      </div>
+    </dialog>
+
+    <dialog id="compareDialog">
+      <div class="dialog-card compare-card">
+        <div class="dialog-header">
+          <h2>Confronto giri</h2>
+          <button class="icon-button" id="closeCompareBtn" type="button" aria-label="Chiudi">&times;</button>
+        </div>
+        <div class="compare-scroll">
+          <table class="compare-table" id="compareTable"></table>
+        </div>
       </div>
     </dialog>
 

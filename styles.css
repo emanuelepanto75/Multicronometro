@@ -77,6 +77,11 @@ button:disabled {
   justify-content: space-between;
 }
 
+.section-title-actions {
+  display: flex;
+  gap: 6px;
+}
+
 .eyebrow {
   margin: 0 0 4px;
   color: var(--accent);
@@ -583,6 +588,56 @@ dialog::backdrop {
 
 .pick-item:hover {
   border-color: var(--accent);
+}
+
+.compare-card {
+  max-height: min(84svh, 720px);
+}
+
+.compare-scroll {
+  overflow: auto;
+  max-height: 60svh;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.compare-table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.compare-table th,
+.compare-table td {
+  padding: 7px 10px;
+  border: 1px solid var(--line);
+  text-align: center;
+  white-space: nowrap;
+}
+
+.compare-table thead th {
+  background: var(--panel-2);
+  color: var(--text);
+}
+
+.compare-table th:first-child,
+.compare-table td:first-child {
+  position: sticky;
+  left: 0;
+  text-align: left;
+  background: var(--panel);
+}
+
+.compare-table thead th:first-child {
+  background: var(--panel-2);
+  z-index: 1;
+}
+
+.compare-summary th,
+.compare-summary td {
+  font-weight: 900;
+  color: var(--accent);
 }
 
 .desktop-block {
