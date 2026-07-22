@@ -245,9 +245,8 @@ input {
 
 .rider-card {
   display: grid;
-  grid-template-columns: minmax(72px, 0.75fr) minmax(0, 1.9fr) minmax(92px, 0.95fr);
-  align-items: center;
-  gap: 6px;
+  gap: 8px;
+  padding: 8px;
 }
 
 .rider-card-header {
@@ -329,11 +328,28 @@ input {
 .timer-display {
   font-variant-numeric: tabular-nums;
   color: var(--accent);
-  font-size: clamp(2.35rem, 12vw, 3.6rem) !important;
+  font-size: clamp(1.9rem, 8.5vw, 2.7rem) !important;
   font-weight: 950;
-  line-height: 0.9;
+  line-height: 0.95;
   letter-spacing: 0;
   text-shadow: 0 0 18px rgba(240, 192, 74, 0.18);
+}
+
+.lap-progress {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 0.62rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.lap-progress strong {
+  color: var(--blue);
+  font-size: 1.15rem;
+  font-variant-numeric: tabular-nums;
 }
 
 .quick-metrics {
@@ -368,14 +384,14 @@ input {
 
 .timer-actions {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 4px;
+  grid-template-columns: 1fr 1.9fr 1fr;
+  gap: 6px;
 }
 
 .timer-actions button {
-  min-height: 38px;
-  padding: 0 2px;
-  font-size: 0.72rem;
+  min-height: 52px;
+  padding: 0 4px;
+  font-size: 0.82rem;
 }
 
 .start {
@@ -386,6 +402,12 @@ input {
 .lap {
   background: var(--blue);
   color: #06131d;
+}
+
+.timer-actions .lap {
+  min-height: 64px;
+  font-size: 1.05rem;
+  font-weight: 950;
 }
 
 .stop {
@@ -421,6 +443,43 @@ input {
   min-width: 28px;
   min-height: 28px;
   font-size: 1rem;
+}
+
+.history-item-actions {
+  display: flex;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+
+.session-group {
+  display: grid;
+  gap: 4px;
+}
+
+.session-entries {
+  display: grid;
+  gap: 4px;
+  padding: 2px 4px 2px 12px;
+  border-left: 2px solid var(--line);
+}
+
+.session-entry-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: rgba(17, 18, 20, 0.86);
+  font-size: 0.72rem;
+}
+
+.session-entry-row .icon-button {
+  flex: 0 0 auto;
+  width: 24px;
+  min-width: 24px;
+  min-height: 24px;
+  font-size: 0.85rem;
 }
 
 .empty {
@@ -492,6 +551,15 @@ dialog::backdrop {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 8px;
+}
+
+.detail-lap-row .icon-button {
+  flex: 0 0 auto;
+  width: 26px;
+  min-width: 26px;
+  min-height: 26px;
+  font-size: 0.85rem;
 }
 
 .dialog-actions {

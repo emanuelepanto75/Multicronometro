@@ -24,6 +24,7 @@ const defaultState = {
 
 let state = loadState();
 let tickTimer = null;
+const expandedSessions = new Set();
 
 const trackSelect = document.querySelector("#trackSelect");
 const trackRecordEl = document.querySelector("#trackRecord");
@@ -142,6 +143,12 @@ function migrateState(parsed) {
     });
   }
 
+  if (Array.isArray(loaded.history)) {
+    loaded.history.forEach((item) => {
+      if (!item.id) item.id = crypto.randomUUID();
+    });
+  }
+
   return loaded;
 }
 
@@ -239,6 +246,10 @@ function renderRiders() {
       </div>
       <div class="rider-timing">
         <strong class="timer-display" data-timer-id="${rider.id}">${formatTime(currentElapsed(rider))}</strong>
+        <div class="lap-progress">
+          <span>Giro in corso</span>
+          <strong data-lap-timer-id="${rider.id}">${formatLapProgress(rider)}</strong>
+        </div>
         <div class="quick-metrics">
           <span>Ultimo <strong>${formatOptionalTime(lastLap)}</strong></span>
           <span>Best <strong>${formatOptionalTime(sessionBest)}</strong></span>
@@ -273,21 +284,64 @@ function renderHistory() {
   }
 
   sessions.forEach((session) => {
-    const row = document.createElement("div");
-    row.className = "history-item";
-    row.innerHTML = `
-      <div class="session-info">
-        <strong>${escapeHtml(session.track)}</strong>
-        <span>${new Date(session.date).toLocaleDateString("it-IT")} - ${escapeHtml(session.riders.join(", "))}</span>
+    const expanded = expandedSessions.has(session.key);
+
+    const wrapper = document.createElement("div");
+    wrapper.className = "session-group";
+    wrapper.innerHTML = `
+      <div class="history-item">
+        <div class="session-info">
+          <strong>${escapeHtml(session.track)}</strong>
+          <span>${new Date(session.date).toLocaleDateString("it-IT")} - ${escapeHtml(session.riders.join(", "))}</span>
+        </div>
+        <div class="history-item-actions">
+          <button class="icon-button" data-action="toggle-session" data-key="${escapeHtml(session.key)}" type="button" aria-label="${expanded ? "Comprimi" : "Espandi"}">${expanded ? "&#9652;" : "&#9662;"}</button>
+          <button class="icon-button" data-action="delete-session" data-key="${escapeHtml(session.key)}" type="button" aria-label="Elimina sessione">&times;</button>
+        </div>
       </div>
-      <button class="icon-button" data-action="delete-session" data-key="${escapeHtml(session.key)}" type="button" aria-label="Elimina sessione">&times;</button>
+      <div class="session-entries" ${expanded ? "" : "hidden"}>
+        ${session.entries.map((entry) => `
+          <div class="session-entry-row">
+            <span>${escapeHtml(entry.rider)} - Best ${formatOptionalTime(entry.bestLap || bestLapFromHistory(entry))} - ${entry.laps} giri</span>
+            <button class="icon-button" data-action="delete-entry" data-id="${entry.id}" type="button" aria-label="Elimina questo tempo">&times;</button>
+          </div>
+        `).join("")}
+      </div>
     `;
-    historyList.append(row);
+    historyList.append(wrapper);
   });
 
   historyList.querySelectorAll("button[data-action='delete-session']").forEach((button) => {
     button.addEventListener("click", () => deleteSession(button.dataset.key));
   });
+  historyList.querySelectorAll("button[data-action='toggle-session']").forEach((button) => {
+    button.addEventListener("click", () => toggleSessionExpanded(button.dataset.key));
+  });
+  historyList.querySelectorAll("button[data-action='delete-entry']").forEach((button) => {
+    button.addEventListener("click", () => deleteHistoryEntry(button.dataset.id));
+  });
+}
+
+function toggleSessionExpanded(key) {
+  if (expandedSessions.has(key)) {
+    expandedSessions.delete(key);
+  } else {
+    expandedSessions.add(key);
+  }
+  renderHistory();
+}
+
+function deleteHistoryEntry(id) {
+  const entry = state.history.find((item) => item.id === id);
+  if (!entry) return;
+
+  const confirmed = window.confirm(
+    `Eliminare il tempo di ${entry.rider} su ${entry.track} (${new Date(entry.date).toLocaleDateString("it-IT")})?`
+  );
+  if (!confirmed) return;
+
+  state.history = state.history.filter((item) => item.id !== id);
+  saveAndRender();
 }
 
 function sessionDayKey(dateString) {
@@ -373,6 +427,7 @@ function stopRider(rider) {
   rider.elapsed = total;
   rider.startAt = null;
   state.history.unshift({
+    id: crypto.randomUUID(),
     riderId: rider.id,
     rider: rider.name,
     track: state.selectedTrack,
@@ -403,6 +458,16 @@ function resetActiveSession() {
 function currentElapsed(rider) {
   if (rider.status !== "running" || !rider.startAt) return rider.elapsed || 0;
   return Date.now() - rider.startAt;
+}
+
+function currentLapElapsed(rider) {
+  const previous = rider.laps.reduce((sum, lap) => sum + lap, 0);
+  return currentElapsed(rider) - previous;
+}
+
+function formatLapProgress(rider) {
+  if (rider.status !== "running") return "--:--.-";
+  return formatTime(Math.max(0, currentLapElapsed(rider)));
 }
 
 function formatTime(ms) {
@@ -449,10 +514,17 @@ function updateRunningTimers() {
   state.riders.forEach((rider) => {
     const timer = riderList.querySelector(`[data-timer-id="${rider.id}"]`);
     if (timer) timer.textContent = formatTime(currentElapsed(rider));
+    const lapTimer = riderList.querySelector(`[data-lap-timer-id="${rider.id}"]`);
+    if (lapTimer) lapTimer.textContent = formatLapProgress(rider);
   });
 }
 
 function openRiderDetail(rider) {
+  renderRiderDetail(rider);
+  riderDialog.showModal();
+}
+
+function renderRiderDetail(rider) {
   const sessionBest = bestLapFor(rider);
   const lastLap = lastLapFor(rider);
   const trackBest = bestHistoricalLapFor(rider, state.selectedTrack);
@@ -467,16 +539,32 @@ function openRiderDetail(rider) {
 
   if (!rider.laps.length) {
     riderDialogLaps.innerHTML = '<p class="empty">Nessun giro registrato in questa sessione.</p>';
-  } else {
-    riderDialogLaps.innerHTML = rider.laps.map((lap, index) => `
-      <div class="detail-lap-row">
-        <span>Giro ${index + 1}</span>
-        <strong>${formatTime(lap)}</strong>
-      </div>
-    `).join("");
+    return;
   }
 
-  riderDialog.showModal();
+  riderDialogLaps.innerHTML = rider.laps.map((lap, index) => `
+    <div class="detail-lap-row">
+      <span>Giro ${index + 1}</span>
+      <strong>${formatTime(lap)}</strong>
+      <button class="icon-button" data-action="delete-lap" data-index="${index}" type="button" aria-label="Elimina giro ${index + 1}">&times;</button>
+    </div>
+  `).join("");
+
+  riderDialogLaps.querySelectorAll("button[data-action='delete-lap']").forEach((button) => {
+    button.addEventListener("click", () => deleteLap(rider.id, Number(button.dataset.index)));
+  });
+}
+
+function deleteLap(riderId, index) {
+  const rider = state.riders.find((item) => item.id === riderId);
+  if (!rider || index < 0 || index >= rider.laps.length) return;
+
+  const confirmed = window.confirm(`Eliminare il giro ${index + 1} (${formatTime(rider.laps[index])})?`);
+  if (!confirmed) return;
+
+  rider.laps.splice(index, 1);
+  saveAndRender();
+  renderRiderDetail(rider);
 }
 
 function openCompareDialog() {
