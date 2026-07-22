@@ -295,7 +295,7 @@ function renderHistory() {
           <span>${new Date(session.date).toLocaleDateString("it-IT")} - ${escapeHtml(session.riders.join(", "))}</span>
         </div>
         <div class="history-item-actions">
-          <button class="icon-button" data-action="toggle-session" data-key="${escapeHtml(session.key)}" type="button" aria-label="${expanded ? "Comprimi" : "Espandi"}">${expanded ? "&#9652;" : "&#9662;"}</button>
+          <button class="secondary toggle-btn" data-action="toggle-session" data-key="${escapeHtml(session.key)}" type="button">${expanded ? "Nascondi" : "Dettagli"}</button>
           <button class="icon-button" data-action="delete-session" data-key="${escapeHtml(session.key)}" type="button" aria-label="Elimina sessione">&times;</button>
         </div>
       </div>

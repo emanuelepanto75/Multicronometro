@@ -447,8 +447,15 @@ input {
 
 .history-item-actions {
   display: flex;
+  align-items: center;
   gap: 6px;
   flex: 0 0 auto;
+}
+
+.toggle-btn {
+  min-height: 28px;
+  padding: 0 8px;
+  font-size: 0.68rem;
 }
 
 .session-group {
@@ -461,6 +468,10 @@ input {
   gap: 4px;
   padding: 2px 4px 2px 12px;
   border-left: 2px solid var(--line);
+}
+
+.session-entries[hidden] {
+  display: none;
 }
 
 .session-entry-row {
