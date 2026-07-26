@@ -91,6 +91,11 @@ button:disabled {
   text-transform: uppercase;
 }
 
+.version-tag {
+  color: var(--muted, #888);
+  font-weight: 600;
+}
+
 h1,
 h2,
 p {

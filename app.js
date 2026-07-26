@@ -1,3 +1,4 @@
+const APP_VERSION = "5.1.0";
 const STORAGE_KEY = "mx-multicronometro-v5";
 
 const SPONSOR_IMAGES = [
@@ -73,6 +74,7 @@ const pdfDayDialog = document.querySelector("#pdfDayDialog");
 const closePdfDayBtn = document.querySelector("#closePdfDayBtn");
 const pdfDayList = document.querySelector("#pdfDayList");
 
+document.querySelector("#appVersion").textContent = `v${APP_VERSION}`;
 document.querySelector("#resetSessionBtn").addEventListener("click", resetActiveSession);
 document.querySelector("#exportBtn").addEventListener("click", exportHistory);
 closePdfDayBtn.addEventListener("click", () => pdfDayDialog.close());
