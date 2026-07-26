@@ -69,8 +69,13 @@ const compareDialog = document.querySelector("#compareDialog");
 const closeCompareBtn = document.querySelector("#closeCompareBtn");
 const compareTable = document.querySelector("#compareTable");
 
+const pdfDayDialog = document.querySelector("#pdfDayDialog");
+const closePdfDayBtn = document.querySelector("#closePdfDayBtn");
+const pdfDayList = document.querySelector("#pdfDayList");
+
 document.querySelector("#resetSessionBtn").addEventListener("click", resetActiveSession);
 document.querySelector("#exportBtn").addEventListener("click", exportHistory);
+closePdfDayBtn.addEventListener("click", () => pdfDayDialog.close());
 registerServiceWorker();
 
 trackSelect.addEventListener("change", () => {
@@ -897,11 +902,56 @@ function renderSponsors() {
 function exportHistory() {
   if (!state.history.length) return;
 
-  const blob = new Blob([createPdf(buildExportBlocks())], { type: "application/pdf" });
+  const days = distinctHistoryDays();
+  if (days.length <= 1) {
+    downloadPdf(days[0] ? days[0].day : null);
+    return;
+  }
+
+  openPdfDayDialog(days);
+}
+
+function distinctHistoryDays() {
+  const days = new Map();
+
+  state.history.forEach((item) => {
+    const day = sessionDayKey(item.date);
+    if (!days.has(day)) days.set(day, { day, date: item.date, count: 0, tracks: new Set() });
+    const entry = days.get(day);
+    entry.count += 1;
+    entry.tracks.add(item.track);
+    if (new Date(item.date) > new Date(entry.date)) entry.date = item.date;
+  });
+
+  return [...days.values()].sort((a, b) => new Date(b.date) - new Date(a.date));
+}
+
+function openPdfDayDialog(days) {
+  pdfDayList.innerHTML = days.map((entry) => `
+    <button class="manage-item pick-item" data-day="${entry.day}" type="button">
+      <div class="manage-item-info">
+        <strong>${new Date(entry.date).toLocaleDateString("it-IT")}</strong>
+        <span>${entry.count} tempi - ${[...entry.tracks].map((track) => escapeHtml(track)).join(", ")}</span>
+      </div>
+    </button>
+  `).join("");
+
+  pdfDayList.querySelectorAll("button[data-day]").forEach((button) => {
+    button.addEventListener("click", () => {
+      pdfDayDialog.close();
+      downloadPdf(button.dataset.day);
+    });
+  });
+
+  pdfDayDialog.showModal();
+}
+
+function downloadPdf(dayKey) {
+  const blob = new Blob([createPdf(buildExportBlocks(dayKey))], { type: "application/pdf" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = "tempi-motocross.pdf";
+  link.download = dayKey ? `tempi-motocross-${dayKey}.pdf` : "tempi-motocross.pdf";
   document.body.append(link);
   link.click();
   setTimeout(() => {
@@ -914,17 +964,19 @@ const PDF_LEFT = 42;
 const PDF_LABEL_WIDTH = 60;
 const PDF_USABLE_WIDTH = 513;
 
-function buildExportBlocks() {
-  const sessions = groupHistoryIntoSessions();
+function buildExportBlocks(dayKey) {
+  const sessions = groupHistoryIntoSessions().filter((session) => !dayKey || sessionDayKey(session.date) === dayKey);
   const blocks = [
-    { type: "line", text: "Simega #304 - Tempi motocross" },
+    { type: "line", text: "Simega #304 - Tempi motocross", font: "F2", size: 16 },
     { type: "line", text: `Esportato: ${new Date().toLocaleString("it-IT")}` },
     { type: "line", text: "" },
   ];
 
   sessions.forEach((session, sessionIndex) => {
-    if (sessionIndex > 0) blocks.push({ type: "line", text: "" });
-    blocks.push({ type: "line", text: `${session.track} - ${new Date(session.date).toLocaleDateString("it-IT")}` });
+    if (sessionIndex > 0) blocks.push({ type: "pagebreak" });
+    blocks.push({ type: "line", text: `Sessione: ${session.track}`, font: "F2", size: 14 });
+    blocks.push({ type: "line", text: new Date(session.date).toLocaleDateString("it-IT") });
+    blocks.push({ type: "line", text: "" });
 
     const columns = session.entries;
     const colWidth = Math.max(55, Math.floor((PDF_USABLE_WIDTH - PDF_LABEL_WIDTH) / Math.max(columns.length, 1)));
@@ -937,7 +989,7 @@ function buildExportBlocks() {
       const label = nameCounts[entry.rider] > 1 ? `${entry.rider} (${nameCounts[entry.rider]})` : entry.rider;
       headerCells.push({ x: colX(index), text: truncateForWidth(label, colWidth - 4) });
     });
-    blocks.push({ type: "row", cells: headerCells });
+    blocks.push({ type: "row", cells: headerCells, font: "F2", size: 11 });
 
     const maxLaps = Math.max(0, ...columns.map((entry) => (Array.isArray(entry.lapTimes) ? entry.lapTimes.length : 0)));
     for (let lap = 0; lap < maxLaps; lap++) {
@@ -968,28 +1020,39 @@ function createPdf(blocks) {
   const pageWidth = 595;
   const pageHeight = 842;
   const top = 800;
-  const lineHeight = 16;
   const bottom = 46;
   const pages = [];
   let current = [];
   let y = top;
 
-  function pushLine(entries) {
+  function pushLine(entries, font, size) {
     if (y < bottom) {
       pages.push(current);
       current = [];
       y = top;
     }
-    entries.forEach(({ x, text }) => current.push({ text, x, y }));
-    y -= lineHeight;
+    entries.forEach(({ x, text }) => current.push({ text, x, y, font, size }));
+    y -= Math.max(16, Math.round(size * 1.4));
   }
 
   blocks.forEach((block) => {
-    if (block.type === "row") {
-      pushLine(block.cells);
+    const font = block.font || "F1";
+    const size = block.size || 11;
+
+    if (block.type === "pagebreak") {
+      if (current.length) pages.push(current);
+      current = [];
+      y = top;
       return;
     }
-    wrapPdfLine(block.text, 88).forEach((part) => pushLine([{ x: PDF_LEFT, text: part }]));
+
+    if (block.type === "row") {
+      pushLine(block.cells, font, size);
+      return;
+    }
+
+    const maxChars = Math.max(20, Math.floor(88 * (11 / size)));
+    wrapPdfLine(block.text, maxChars).forEach((part) => pushLine([{ x: PDF_LEFT, text: part }], font, size));
   });
 
   if (current.length) pages.push(current);
@@ -1002,13 +1065,20 @@ function createPdf(blocks) {
   pages.forEach((page, index) => {
     const pageObjectNumber = 3 + index * 2;
     const streamObjectNumber = pageObjectNumber + 1;
-    const stream = [
-      "BT",
-      "/F1 11 Tf",
-      ...page.map((line) => `1 0 0 1 ${line.x} ${line.y} Tm (${escapePdfText(line.text)}) Tj`),
-      "ET",
-    ].join("\n");
-    objects.push(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageWidth} ${pageHeight}] /Resources << /Font << /F1 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> >> >> /Contents ${streamObjectNumber} 0 R >>`);
+    const streamLines = ["BT"];
+    let activeFont = null;
+    let activeSize = null;
+    page.forEach((line) => {
+      if (line.font !== activeFont || line.size !== activeSize) {
+        streamLines.push(`/${line.font} ${line.size} Tf`);
+        activeFont = line.font;
+        activeSize = line.size;
+      }
+      streamLines.push(`1 0 0 1 ${line.x} ${line.y} Tm (${escapePdfText(line.text)}) Tj`);
+    });
+    streamLines.push("ET");
+    const stream = streamLines.join("\n");
+    objects.push(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageWidth} ${pageHeight}] /Resources << /Font << /F1 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> /F2 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >> >> >> /Contents ${streamObjectNumber} 0 R >>`);
     objects.push(`<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`);
   });
 
