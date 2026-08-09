@@ -244,41 +244,94 @@ function renderRiders() {
     const card = document.createElement("article");
     card.className = "rider-card";
     card.innerHTML = `
-      <div class="rider-card-header">
+      <div class="rider-row-1">
         <button class="rider-name" data-action="detail" data-id="${rider.id}" type="button" aria-label="Dettaglio ${escapeHtml(rider.name)}">
           <span class="rider-number">${rider.number ?? "-"}</span>
           <span>${escapeHtml(rider.name)}</span>
         </button>
+        <span class="rider-record">${archiveBest ? `Record ${formatTime(archiveBest)}` : "Record --"}</span>
+        <button class="icon-button" data-action="start" data-id="${rider.id}" type="button" aria-label="Riavvia cronometro ${escapeHtml(rider.name)}" ${rider.status !== "running" ? "disabled" : ""}>&#8635;</button>
         <button class="icon-button" data-action="remove" data-id="${rider.id}" type="button" aria-label="Rimuovi ${escapeHtml(rider.name)}">&times;</button>
       </div>
-      <div class="rider-timing">
+      <div class="rider-row-2">
         <strong class="timer-display" data-timer-id="${rider.id}">${formatTime(currentElapsed(rider))}</strong>
-        <div class="lap-progress">
-          <span>Giro in corso</span>
-          <strong data-lap-timer-id="${rider.id}">${formatLapProgress(rider)}</strong>
-        </div>
-        <div class="quick-metrics">
-          <span>Ultimo <strong>${formatOptionalTime(lastLap)}</strong></span>
-          <span>Best <strong>${formatOptionalTime(sessionBest)}</strong></span>
-        </div>
-        ${archiveBest ? `
-        <div class="archive-metric">
-          <span class="metric-label">Record pista (archivio)</span>
-          <strong>${formatTime(archiveBest)}</strong>
-        </div>` : ""}
+        <button class="timer-btn ${rider.status === "running" ? "is-running" : "is-idle"}" data-action="primary" data-id="${rider.id}" type="button">${rider.status === "running" ? "Giro" : "Start"}</button>
       </div>
-      <div class="timer-actions">
-        <button class="start" data-action="start" data-id="${rider.id}" type="button">${rider.status === "running" ? "Riavvia" : "Start"}</button>
-        <button class="lap" data-action="lap" data-id="${rider.id}" type="button" ${rider.status !== "running" ? "disabled" : ""}>Lap</button>
-        <button class="stop" data-action="stop" data-id="${rider.id}" type="button" ${rider.status === "idle" ? "disabled" : ""}>Stop</button>
+      <div class="rider-row-3">
+        <div>
+          <span class="metric-label">Giro in corso</span>
+          <strong class="lap-progress-value" data-lap-timer-id="${rider.id}">${formatLapProgress(rider)}</strong>
+        </div>
+        <div>
+          <span class="metric-label">Ultimo</span>
+          <strong>${formatOptionalTime(lastLap)}</strong>
+        </div>
+        <div>
+          <span class="metric-label">Best</span>
+          <strong>${formatOptionalTime(sessionBest)}</strong>
+        </div>
       </div>
     `;
     riderList.append(card);
   });
 
-  riderList.querySelectorAll("button[data-action]").forEach((button) => {
+  riderList.querySelectorAll("button[data-action]:not([data-action='primary'])").forEach((button) => {
     button.addEventListener("click", () => handleRiderAction(button.dataset.action, button.dataset.id));
   });
+
+  riderList.querySelectorAll("button[data-action='primary']").forEach((button) => {
+    attachPrimaryButton(button, button.dataset.id);
+  });
+}
+
+const HOLD_TO_STOP_MS = 650;
+
+function attachPrimaryButton(button, riderId) {
+  let holdTimer = null;
+  let holdTriggered = false;
+  let pressActive = false;
+
+  const clearHold = () => {
+    if (holdTimer) {
+      clearTimeout(holdTimer);
+      holdTimer = null;
+    }
+    button.classList.remove("holding");
+  };
+
+  const endPress = () => {
+    pressActive = false;
+    clearHold();
+  };
+
+  button.addEventListener("pointerdown", (event) => {
+    event.preventDefault();
+    const rider = state.riders.find((item) => item.id === riderId);
+    if (!rider) return;
+    pressActive = true;
+    holdTriggered = false;
+    if (rider.status === "running") {
+      button.classList.add("holding");
+      holdTimer = setTimeout(() => {
+        holdTriggered = true;
+        handleRiderAction("stop", riderId);
+      }, HOLD_TO_STOP_MS);
+    }
+  });
+
+  button.addEventListener("pointerup", () => {
+    const wasPressActive = pressActive;
+    const wasHolding = holdTriggered;
+    endPress();
+    if (!wasPressActive || wasHolding) return;
+    const rider = state.riders.find((item) => item.id === riderId);
+    if (!rider) return;
+    if (rider.status === "idle") handleRiderAction("start", riderId);
+    else if (rider.status === "running") handleRiderAction("lap", riderId);
+  });
+
+  button.addEventListener("pointerleave", endPress);
+  button.addEventListener("pointercancel", endPress);
 }
 
 function renderHistory() {
@@ -962,9 +1015,21 @@ function downloadPdf(dayKey) {
   }, 1000);
 }
 
+const PDF_PAGE_WIDTH = 842;
+const PDF_PAGE_HEIGHT = 595;
 const PDF_LEFT = 42;
 const PDF_LABEL_WIDTH = 60;
-const PDF_USABLE_WIDTH = 513;
+const PDF_USABLE_WIDTH = PDF_PAGE_WIDTH - PDF_LEFT * 2;
+const PDF_MIN_COL_WIDTH = 50;
+
+function chunkColumns(columns, size) {
+  if (!columns.length) return [[]];
+  const chunks = [];
+  for (let i = 0; i < columns.length; i += size) {
+    chunks.push(columns.slice(i, i + size));
+  }
+  return chunks;
+}
 
 function buildExportBlocks(dayKey) {
   const sessions = groupHistoryIntoSessions().filter((session) => !dayKey || sessionDayKey(session.date) === dayKey);
@@ -974,55 +1039,66 @@ function buildExportBlocks(dayKey) {
     { type: "line", text: "" },
   ];
 
+  const availableWidth = PDF_USABLE_WIDTH - PDF_LABEL_WIDTH;
+  const maxColumnsPerChunk = Math.max(1, Math.floor(availableWidth / PDF_MIN_COL_WIDTH));
+
   sessions.forEach((session, sessionIndex) => {
     if (sessionIndex > 0) blocks.push({ type: "pagebreak" });
     blocks.push({ type: "line", text: `Sessione: ${session.track}`, font: "F2", size: 14 });
     blocks.push({ type: "line", text: new Date(session.date).toLocaleDateString("it-IT") });
     blocks.push({ type: "line", text: "" });
 
-    const columns = session.entries;
-    const colWidth = Math.max(55, Math.floor((PDF_USABLE_WIDTH - PDF_LABEL_WIDTH) / Math.max(columns.length, 1)));
-    const colX = (index) => PDF_LEFT + PDF_LABEL_WIDTH + index * colWidth;
-
+    const columnChunks = chunkColumns(session.entries, maxColumnsPerChunk);
     const nameCounts = {};
-    const headerCells = [{ x: PDF_LEFT, text: "Giro" }];
-    columns.forEach((entry, index) => {
-      nameCounts[entry.rider] = (nameCounts[entry.rider] || 0) + 1;
-      const label = nameCounts[entry.rider] > 1 ? `${entry.rider} (${nameCounts[entry.rider]})` : entry.rider;
-      headerCells.push({ x: colX(index), text: truncateForWidth(label, colWidth - 4) });
+
+    columnChunks.forEach((columns, chunkIndex) => {
+      if (chunkIndex > 0) {
+        blocks.push({ type: "line", text: "" });
+        blocks.push({ type: "line", text: `${session.track} - piloti (segue)`, font: "F2", size: 12 });
+      }
+
+      const colWidth = Math.floor(availableWidth / columns.length);
+      const colX = (index) => PDF_LEFT + PDF_LABEL_WIDTH + index * colWidth;
+
+      const headerCells = [{ x: PDF_LEFT, text: "Giro" }];
+      columns.forEach((entry, index) => {
+        nameCounts[entry.rider] = (nameCounts[entry.rider] || 0) + 1;
+        const label = nameCounts[entry.rider] > 1 ? `${entry.rider} (${nameCounts[entry.rider]})` : entry.rider;
+        headerCells.push({ x: colX(index), text: truncateForWidth(label, colWidth - 4) });
+      });
+      blocks.push({ type: "row", cells: headerCells, font: "F2", size: 11 });
+
+      const maxLaps = Math.max(0, ...columns.map((entry) => (Array.isArray(entry.lapTimes) ? entry.lapTimes.length : 0)));
+      for (let lap = 0; lap < maxLaps; lap++) {
+        const cells = [{ x: PDF_LEFT, text: `${lap + 1}` }];
+        columns.forEach((entry, index) => {
+          const time = Array.isArray(entry.lapTimes) ? entry.lapTimes[lap] : null;
+          cells.push({ x: colX(index), text: formatOptionalTime(time) });
+        });
+        blocks.push({ type: "row", cells });
+      }
+
+      const summaryRow = (label, valueFn) => {
+        const cells = [{ x: PDF_LEFT, text: label }];
+        columns.forEach((entry, index) => {
+          cells.push({ x: colX(index), text: formatOptionalTime(valueFn(entry)) });
+        });
+        blocks.push({ type: "row", cells });
+      };
+      summaryRow("Best", (entry) => entry.bestLap || bestLapFromHistory(entry));
+      summaryRow("Ultimo", (entry) => entry.lastLap);
+      summaryRow("Totale", (entry) => entry.total);
     });
-    blocks.push({ type: "row", cells: headerCells, font: "F2", size: 11 });
-
-    const maxLaps = Math.max(0, ...columns.map((entry) => (Array.isArray(entry.lapTimes) ? entry.lapTimes.length : 0)));
-    for (let lap = 0; lap < maxLaps; lap++) {
-      const cells = [{ x: PDF_LEFT, text: `${lap + 1}` }];
-      columns.forEach((entry, index) => {
-        const time = Array.isArray(entry.lapTimes) ? entry.lapTimes[lap] : null;
-        cells.push({ x: colX(index), text: formatOptionalTime(time) });
-      });
-      blocks.push({ type: "row", cells });
-    }
-
-    const summaryRow = (label, valueFn) => {
-      const cells = [{ x: PDF_LEFT, text: label }];
-      columns.forEach((entry, index) => {
-        cells.push({ x: colX(index), text: formatOptionalTime(valueFn(entry)) });
-      });
-      blocks.push({ type: "row", cells });
-    };
-    summaryRow("Best", (entry) => entry.bestLap || bestLapFromHistory(entry));
-    summaryRow("Ultimo", (entry) => entry.lastLap);
-    summaryRow("Totale", (entry) => entry.total);
   });
 
   return blocks;
 }
 
 function createPdf(blocks) {
-  const pageWidth = 595;
-  const pageHeight = 842;
-  const top = 800;
-  const bottom = 46;
+  const pageWidth = PDF_PAGE_WIDTH;
+  const pageHeight = PDF_PAGE_HEIGHT;
+  const top = pageHeight - 42;
+  const bottom = 40;
   const pages = [];
   let current = [];
   let y = top;
