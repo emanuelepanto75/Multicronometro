@@ -255,21 +255,12 @@ function renderRiders() {
       </div>
       <div class="rider-row-2">
         <strong class="timer-display" data-timer-id="${rider.id}">${formatTime(currentElapsed(rider))}</strong>
+        <div class="rider-mini-metrics">
+          <div><span class="metric-label">Giro</span><strong class="lap-progress-value" data-lap-timer-id="${rider.id}">${formatLapProgress(rider)}</strong></div>
+          <div><span class="metric-label">Ultimo</span><strong>${formatOptionalTime(lastLap)}</strong></div>
+          <div><span class="metric-label">Best</span><strong>${formatOptionalTime(sessionBest)}</strong></div>
+        </div>
         <button class="timer-btn ${rider.status === "running" ? "is-running" : "is-idle"}" data-action="primary" data-id="${rider.id}" type="button">${rider.status === "running" ? "Giro" : "Start"}</button>
-      </div>
-      <div class="rider-row-3">
-        <div>
-          <span class="metric-label">Giro in corso</span>
-          <strong class="lap-progress-value" data-lap-timer-id="${rider.id}">${formatLapProgress(rider)}</strong>
-        </div>
-        <div>
-          <span class="metric-label">Ultimo</span>
-          <strong>${formatOptionalTime(lastLap)}</strong>
-        </div>
-        <div>
-          <span class="metric-label">Best</span>
-          <strong>${formatOptionalTime(sessionBest)}</strong>
-        </div>
       </div>
     `;
     riderList.append(card);

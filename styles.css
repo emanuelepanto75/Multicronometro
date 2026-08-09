@@ -335,32 +335,35 @@ input {
   text-shadow: 0 0 18px rgba(240, 192, 74, 0.18);
 }
 
-.rider-row-3 {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 5px;
-  margin: 0;
-  align-items: start;
+.rider-mini-metrics {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 0 0 auto;
 }
 
-.rider-row-3 > div {
-  min-width: 0;
+.rider-mini-metrics > div {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
 }
 
-.rider-row-3 strong,
+.rider-mini-metrics .metric-label {
+  min-width: 28px;
+  font-size: 0.52rem;
+}
+
+.rider-mini-metrics strong,
 .lap-progress-value {
-  display: block;
-  margin-top: 1px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   color: var(--text);
-  font-size: 0.76rem;
+  font-size: 0.68rem;
 }
 
 .lap-progress-value {
   color: var(--blue);
-  font-size: 0.9rem;
 }
 
 .timer-btn {
