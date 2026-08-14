@@ -319,16 +319,15 @@ input {
 .rider-row-2 {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   font-variant-numeric: tabular-nums;
 }
 
 .timer-display {
-  flex: 1 1 auto;
-  min-width: 0;
+  flex: 0 0 auto;
   font-variant-numeric: tabular-nums;
   color: var(--accent);
-  font-size: clamp(1.15rem, 5.2vw, 1.5rem) !important;
+  font-size: clamp(1.05rem, 4.6vw, 1.35rem) !important;
   font-weight: 950;
   line-height: 0.95;
   letter-spacing: 0;
@@ -338,21 +337,25 @@ input {
 .rider-mini-metrics {
   display: flex;
   flex-direction: column;
+  align-items: center;
+  justify-content: center;
   gap: 0;
-  flex: 0 0 auto;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .rider-mini-metrics > div {
   display: flex;
   align-items: baseline;
   gap: 3px;
-  line-height: 1.05;
+  line-height: 1.1;
 }
 
 .rider-mini-metrics .metric-label {
-  min-width: 22px;
-  font-size: 0.42rem;
-  line-height: 1.05;
+  min-width: 28px;
+  font-size: 0.48rem;
+  text-align: right;
+  line-height: 1.1;
 }
 
 .rider-mini-metrics strong,
@@ -361,24 +364,29 @@ input {
   text-overflow: ellipsis;
   white-space: nowrap;
   color: var(--text);
-  font-size: 0.54rem;
-  line-height: 1.05;
+  font-size: 0.62rem;
+  line-height: 1.1;
 }
 
 .lap-progress-value {
   color: var(--blue);
 }
 
+.rider-buttons {
+  display: flex;
+  gap: 4px;
+  flex: 0 0 auto;
+}
+
 .timer-btn {
   flex: 0 0 auto;
-  min-width: 62px;
+  min-width: 46px;
   min-height: 30px;
-  padding: 0 8px;
+  padding: 0 5px;
   border: 0;
   border-radius: 7px;
-  font-size: 0.7rem;
+  font-size: 0.6rem;
   font-weight: 950;
-  touch-action: none;
   -webkit-touch-callout: none;
   user-select: none;
   transition: background-color 120ms ease, transform 80ms ease;
@@ -394,7 +402,7 @@ input {
   color: #06131d;
 }
 
-.timer-btn.holding {
+.timer-btn.is-stop {
   background: var(--bad);
   color: #210806;
 }

@@ -260,69 +260,18 @@ function renderRiders() {
           <div><span class="metric-label">Ultimo</span><strong>${formatOptionalTime(lastLap)}</strong></div>
           <div><span class="metric-label">Best</span><strong>${formatOptionalTime(sessionBest)}</strong></div>
         </div>
-        <button class="timer-btn ${rider.status === "running" ? "is-running" : "is-idle"}" data-action="primary" data-id="${rider.id}" type="button">${rider.status === "running" ? "Giro" : "Start"}</button>
+        <div class="rider-buttons">
+          <button class="timer-btn ${rider.status === "running" ? "is-running" : "is-idle"}" data-action="${rider.status === "running" ? "lap" : "start"}" data-id="${rider.id}" type="button">${rider.status === "running" ? "Giro" : "Start"}</button>
+          <button class="timer-btn is-stop" data-action="stop" data-id="${rider.id}" type="button" ${rider.status === "idle" ? "disabled" : ""}>Stop</button>
+        </div>
       </div>
     `;
     riderList.append(card);
   });
 
-  riderList.querySelectorAll("button[data-action]:not([data-action='primary'])").forEach((button) => {
+  riderList.querySelectorAll("button[data-action]").forEach((button) => {
     button.addEventListener("click", () => handleRiderAction(button.dataset.action, button.dataset.id));
   });
-
-  riderList.querySelectorAll("button[data-action='primary']").forEach((button) => {
-    attachPrimaryButton(button, button.dataset.id);
-  });
-}
-
-const HOLD_TO_STOP_MS = 650;
-
-function attachPrimaryButton(button, riderId) {
-  let holdTimer = null;
-  let holdTriggered = false;
-  let pressActive = false;
-
-  const clearHold = () => {
-    if (holdTimer) {
-      clearTimeout(holdTimer);
-      holdTimer = null;
-    }
-    button.classList.remove("holding");
-  };
-
-  const endPress = () => {
-    pressActive = false;
-    clearHold();
-  };
-
-  button.addEventListener("pointerdown", (event) => {
-    event.preventDefault();
-    const rider = state.riders.find((item) => item.id === riderId);
-    if (!rider) return;
-    pressActive = true;
-    holdTriggered = false;
-    if (rider.status === "running") {
-      button.classList.add("holding");
-      holdTimer = setTimeout(() => {
-        holdTriggered = true;
-        handleRiderAction("stop", riderId);
-      }, HOLD_TO_STOP_MS);
-    }
-  });
-
-  button.addEventListener("pointerup", () => {
-    const wasPressActive = pressActive;
-    const wasHolding = holdTriggered;
-    endPress();
-    if (!wasPressActive || wasHolding) return;
-    const rider = state.riders.find((item) => item.id === riderId);
-    if (!rider) return;
-    if (rider.status === "idle") handleRiderAction("start", riderId);
-    else if (rider.status === "running") handleRiderAction("lap", riderId);
-  });
-
-  button.addEventListener("pointerleave", endPress);
-  button.addEventListener("pointercancel", endPress);
 }
 
 function renderHistory() {
