@@ -235,7 +235,7 @@ input {
 .rider-list,
 .history-list {
   display: grid;
-  gap: 5px;
+  gap: 3px;
   margin-top: 6px;
 }
 
@@ -249,8 +249,8 @@ input {
 
 .rider-card {
   display: grid;
-  gap: 8px;
-  padding: 8px;
+  gap: 2px;
+  padding: 3px 6px;
 }
 
 .rider-row-1 {
@@ -258,37 +258,37 @@ input {
 }
 
 .rider-row-1 .icon-button {
-  width: 24px;
-  min-width: 24px;
-  min-height: 26px;
-  font-size: 1rem;
+  width: 16px;
+  min-width: 16px;
+  min-height: 15px;
+  font-size: 0.68rem;
 }
 
 .rider-name {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 4px;
   min-width: 0;
   flex: 1 1 auto;
-  min-height: 30px;
+  min-height: 15px;
   padding: 0;
   border: 0;
   background: transparent;
   color: var(--text);
   text-align: left;
-  font-size: 0.78rem;
+  font-size: 0.68rem;
   font-weight: 900;
 }
 
 .rider-number {
   display: inline-grid;
   place-items: center;
-  width: 22px;
-  height: 22px;
+  width: 17px;
+  height: 17px;
   border-radius: 50%;
   background: var(--text);
   color: #111214;
-  font-size: 0.68rem;
+  font-size: 0.56rem;
   flex: 0 0 auto;
 }
 
@@ -301,7 +301,7 @@ input {
 .rider-record {
   flex: 0 0 auto;
   color: var(--muted);
-  font-size: 0.62rem;
+  font-size: 0.54rem;
   font-weight: 900;
   text-transform: uppercase;
   white-space: nowrap;
@@ -319,7 +319,7 @@ input {
 .rider-row-2 {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 6px;
   font-variant-numeric: tabular-nums;
 }
 
@@ -328,7 +328,7 @@ input {
   min-width: 0;
   font-variant-numeric: tabular-nums;
   color: var(--accent);
-  font-size: clamp(1.9rem, 8.5vw, 2.7rem) !important;
+  font-size: clamp(1.15rem, 5.2vw, 1.5rem) !important;
   font-weight: 950;
   line-height: 0.95;
   letter-spacing: 0;
@@ -338,19 +338,21 @@ input {
 .rider-mini-metrics {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 0;
   flex: 0 0 auto;
 }
 
 .rider-mini-metrics > div {
   display: flex;
   align-items: baseline;
-  gap: 4px;
+  gap: 3px;
+  line-height: 1.05;
 }
 
 .rider-mini-metrics .metric-label {
-  min-width: 28px;
-  font-size: 0.52rem;
+  min-width: 22px;
+  font-size: 0.42rem;
+  line-height: 1.05;
 }
 
 .rider-mini-metrics strong,
@@ -359,7 +361,8 @@ input {
   text-overflow: ellipsis;
   white-space: nowrap;
   color: var(--text);
-  font-size: 0.68rem;
+  font-size: 0.54rem;
+  line-height: 1.05;
 }
 
 .lap-progress-value {
@@ -368,12 +371,12 @@ input {
 
 .timer-btn {
   flex: 0 0 auto;
-  min-width: 110px;
-  min-height: 64px;
-  padding: 0 10px;
+  min-width: 62px;
+  min-height: 30px;
+  padding: 0 8px;
   border: 0;
-  border-radius: 10px;
-  font-size: 1.05rem;
+  border-radius: 7px;
+  font-size: 0.7rem;
   font-weight: 950;
   touch-action: none;
   -webkit-touch-callout: none;

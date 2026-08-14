@@ -1,4 +1,4 @@
-const APP_VERSION = "5.1.0";
+const APP_VERSION = "5.2.0";
 const STORAGE_KEY = "mx-multicronometro-v5";
 
 const SPONSOR_IMAGES = [
