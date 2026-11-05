@@ -380,7 +380,7 @@ input {
 
 .timer-btn {
   flex: 0 0 auto;
-  min-width: 46px;
+  min-width: 66px;
   min-height: 30px;
   padding: 0 5px;
   border: 0;
